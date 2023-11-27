@@ -1,4 +1,6 @@
 const AsapModel = require("../MODEL/model")
+const jwt = require("jsonwebtoken")
+const { decodeToken }= require("../UTILI/jwt")
 
 exports.register = async(req, res)=>{
     try {
