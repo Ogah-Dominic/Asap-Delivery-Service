@@ -3,7 +3,7 @@ const menuModel = require('../models/menuModel');
 const userModel = require('../models/userModel');
 
 // Add an item to the cart
-const addToCart = async (req, res) => {
+exports.addToCart = async (req, res) => {
   try {
     const { userId } = req.user;
     const { menuItemId } = req.body;
@@ -31,7 +31,12 @@ const addToCart = async (req, res) => {
 
     // Create a new cart for the user if no existing cart
     if (!cart) {
-      cart = new cartModel({ restaurant: restaurantId, user: userId, items: [], grandTotal: 0, cashBack: user.cashBack });
+      cart = new cartModel({ 
+         restaurant: restaurantId,
+         user: userId,
+         items: [],
+         grandTotal: 0,
+         cashBack: user.cashBack });
     }
 
      if (cart.items.length === 0){
@@ -89,7 +94,7 @@ const addToCart = async (req, res) => {
 
 
 // Remove an item from cart
-const removeFromCart = async (req, res) => {
+exports.removeFromCart = async (req, res) => {
   try {
     const { userId } = req.user;
     const { menuItemId } = req.body;
@@ -158,7 +163,7 @@ const removeFromCart = async (req, res) => {
 
 
 // Delete an item entirely from cart
-const deleteItemFroCart = async (req, res) => {
+exports.deleteItemFroCart = async (req, res) => {
   try {
     const { userId } = req.user;
     const { menuItemId } = req.body;
@@ -221,7 +226,7 @@ const deleteItemFroCart = async (req, res) => {
 
 
 // Get a user's cart
-const getCart = async (req, res) => {
+exports.getCart = async (req, res) => {
   try {
     const { userId } = req.user;
 
@@ -252,10 +257,9 @@ const getCart = async (req, res) => {
 }
 
 
-
-module.exports = {
-  addToCart,
-  removeFromCart,
-  deleteItemFroCart,
-  getCart
-};
+// module.exports = {
+//   addToCart,
+//   removeFromCart,
+  //  deleteItemFroCart,
+//   getCart
+// };

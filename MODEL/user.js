@@ -1,22 +1,40 @@
 const mongoose = require('mongoose')
 
-const constumerSchema = new mongoose.Schema({
-    fullName: {
+const userSchema = new mongoose.Schema({
+    surName: {
         type: String,
-        required: true['Fullname is required'],
+        required: true
+    },
+    lastName: {
+        type: String,
+        required: true
+    },
+    sex:{
+        type: String,
+        required: true
+    },
+    dateOfBirth:{
+        type: String,
+        required: true
     },
     email: {
         type: String,
-        required: true['Email is required'],
+        required: true,
         unique: true
     },
     phoneNumber: {
         type: String,
-        required: true['Phone number is required'],
+        required: true,
+        unique: true
     },
     password: {
         type: String,
-        required: true['Password is required'],
+        required: true
+    },
+
+    confirmPassword: {
+        type: String,
+        required: true
     },
     cashBack: { 
         type: Number, 
@@ -34,6 +52,10 @@ const constumerSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    isLoggedIn: {
+        type: Boolean,
+        default: false
+    },
     isSuperAdmin: {
         type: Boolean,
         default: false
@@ -45,6 +67,6 @@ const constumerSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 
-const constumerModel = mongoose.model('constumer', constumerSchema);
+const userModel = mongoose.model('constumers', userSchema);
 
-module.exports = constumerModel
+module.exports = userModel

@@ -1,24 +1,19 @@
 require('dotenv').config();
-const userModel = require("../MODEL/user");
-const bcrypt = require("bcrypt");
+const userModel = require('../MODEL/userModel');
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { mailTemplate, forgotMailTemplate } = require('../middleware/mailTemplate');
-const { sendEmail } = require("../MIDDLEWARE/Email");
-const RevokedToken = require("../MODEL/RevokeToken");
-const { find } = require('../MODEL/user');
+const { sendEmail } = require('../middleware/sendMail');
+const RevokedToken = require('../models/revokedTokenModel')
 
 // USER ONBOARDING
 
 // user sign up
-exports.userSignUp = async (req, res) => {
+exports.vendorSignUp = async (req, res) => {
   try {
-    const {
-      phoneNumber,
-      email, 
-      password, 
-      confirmPassword } = req.body;
+    const {contact, email, password, confirmPassword } = req.body;
 
-    const emailExists = await userModel.findOne({ email });
+    const emailExists = await vendorModel.findOne({ email });
 
     if (emailExists) {
       return res.status(400).json({
@@ -28,30 +23,27 @@ exports.userSignUp = async (req, res) => {
 
     // salt and hash the password using bcrypt
     const salt = bcrypt.genSaltSync(12)
-    const hashedPassword = bcrypt.hashSync(password,confirmPassword, salt)
+    const hashedPassword = bcrypt.hashSync(password, salt)
     const data = {
-      surName: surName.toUpperCase(),
-      lastName: lastName.toUpperCase(),
+      fullName: fullName.toUpperCase(),
       email: email.toLowerCase(),
-      sex,
-      dateOfDate,
-      phoneNumber,
-      password: hashedPassword,
-      confirmpassword: hashedPassword
+      contact,
+      password: hashedPassword
     }
 
-    // create a user
-    const user = await userModel.create(data);
+    // create a vendor
+    const user = await vendorModel.create(data);
 
     // create a token
-    const token = jwt.sign({ userId: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "5 mins" })
-    // console.log(token)
+    const token = jwt.sign({ userId: user._id, email: user.email }, process.env.JWT_SECRET, { expiresIn: "10 mins" })
+    console.log(token)
 
     const protocol = req.protocol;
     const host = req.get("host");
     const subject = "Email Verification";
-    const link = `https://PointPlus-app.onrender.com/#/verification/${token}`;
-    const html = await mailTemplate(link, user.SurName + + LastName);
+    const link = `${req.protocol}:${req.get("host")}${token}`;
+    //const link`https://PointPlus-app.vercel.com/#/verification/${token}`;
+    const html = await mailTemplate(link, vendor.fullName);
     const mail = {
       email: email,
       subject,
@@ -59,13 +51,13 @@ exports.userSignUp = async (req, res) => {
     };
     sendEmail(mail);
 
-    // save the user
-    const savedUser = await user.save();
+    // save the vendor
+    const savedVendor = await vendor.save();
 
     // return a response
     res.status(201).json({
-      message: `Check your email: ${savedUser.email} to verify your account.`,
-      data: savedUser
+      message: `Check your email: ${savedVendor.email} to verify your account.`,
+      data: savedVendor
     })
 
   } catch (error) {
@@ -87,31 +79,31 @@ exports.verifyEmail = async (req, res) => {
       })
     }
 
-    // verify the token and extract the user's email
+    // verify the token and extract the vendor's email
     const { email } = jwt.verify(token, process.env.JWT_SECRET);
 
-    const user = await userModel.findOne({ email: email.toLowerCase() });
+    const vendor = await vendorModel.findOne({ email: email.toLowerCase() });
 
-    if (!user) {
+    if (!vendor) {
       return res.status(404).json({
-        error: "User not found"
+        error: "vendor not found"
       });
     }
 
-    // Check if user has already been verified
-    if (user.isVerified) {
+    // Check if vendor has already been verified
+    if (vendor.isVerified) {
       return res.status(400).json({
-        error: "User already verified"
+        error: "vendor already verified"
       });
     }
 
     // update the user verification and save changes to database
-    user.isVerified = true;
-    await user.save();
+    vendor.isVerified = true;
+    await vendor.save();
 
     res.status(200).json({
-      message: "User verified successfully",
-      data: user,
+      message: "vendor verified successfully",
+      data: vendor,
     })
     // res.status( 200 ).redirect( `${req.protocol}://${req.get("host")}/api/log-in` );
 
@@ -126,7 +118,7 @@ exports.verifyEmail = async (req, res) => {
 // resend verification
 exports.resendVerificationEmail = async (req, res) => {
   try {
-    // get user email from request body
+    // get vendor email from request body
     const { email } = req.body;
     if (!email) {
       return res.status(404).json({
@@ -134,27 +126,28 @@ exports.resendVerificationEmail = async (req, res) => {
       });
     }
 
-    // find user
-    const user = await userModel.findOne({ email: email.toLowerCase() });
-    if (!user) {
+    // find vendor
+    const vendor = await vendorModel.findOne({ email: email.toLowerCase() });
+    if (!vendor) {
       return res.status(404).json({
-        error: "User not found"
+        error: "vendor not found"
       });
     }
 
-    // Check if user has already been verified
-    if (user.isVerified) {
+    // Check if vendor has already been verified
+    if (vendor.isVerified) {
       return res.status(400).json({
-        error: "User already verified"
+        error: "vendor already verified"
       });
     }
 
     // create a token
-    const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "30 mins" });
+    const token = jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: "10 mins" });
 
     const subject = "Email Verification";
-    const link = `https://Asap-app.onrender.com/#/verification/${token}`;
-    const html = await mailTemplate(link, user.fullName);
+    const link = `https://PointPlus-app.vercel.com/#/verification/${token}`;
+    // const link = `${req.protocol}:${req.get("host")}${token}`;
+    const html = await mailTemplate(link, vendor.fullName);
     const mail = {
       email: email,
       subject,
@@ -163,7 +156,7 @@ exports.resendVerificationEmail = async (req, res) => {
     sendEmail(mail);
 
     res.status(200).json({
-      message: `Verification email sent successfully to your email: ${user.email}`
+      message: `Verification email sent successfully to your email: ${vendor.email}`
     });
 
   } catch (error) {
@@ -180,24 +173,25 @@ exports.forgotPassword = async (req, res) => {
     const { email } = req.body;
     if (!email) {
       return res.status(404).json({
-        error: "Please enter a valid email address"
+        error: "Please enter email address"
       });
     }
 
-    // Check if the email exists in the userModel
-    const user = await userModel.findOne({ email: email.toLowerCase() });
-    if (!user) {
+    // Check if the email exists in the vendorModel
+    const vendor = await vendorModel.findOne({ email: email.toLowerCase() });
+    if (!vendor) {
       return res.status(404).json({
-        message: `User with the email ${email} not found`
+        message: `Vendor with the email ${email} not found`
       });
     }
 
     // Generate a reset token
-    const resetToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "5m" });
+    const resetToken = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "10m" });
 
     const subject = "Password Reset";
-    const link = `https://Asap-app.onrender.com/#/resetpassword/${resetToken}`;
-    const html = await forgotMailTemplate(link, user.fullName);
+    const link = `https://PointPlus-app.vercel.com/#/resetpassword/${resetToken}`;
+    // const link = `${req.protocol}:${req.get("host")}${token}`;
+    const html = await forgotMailTemplate(link, vendor.fullName);
     const mail = {
       email: email,
       subject,
@@ -219,7 +213,7 @@ exports.forgotPassword = async (req, res) => {
 
 
 // Reset Password
-exports.resetPassword = async (req, res) => {
+const resetPassword = async (req, res) => {
   try {
     const { token } = req.params;
     const { newPassword } = req.body;
@@ -229,17 +223,17 @@ exports.resetPassword = async (req, res) => {
       });
     }
 
-    // Verify the user's token
+    // Verify the vendor's token
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Get the user's ID from the token
-    const userId = decodedToken.userId;
+    // Get the vendor's ID from the token
+    const vendorId = decodedToken.vendorId;
 
     // Find the user by ID
-    const user = await userModel.findById(userId);
-    if (!user) {
+    const vendor = await vendorModel.findById(vendorId);
+    if (!vendor) {
       return res.status(404).json({
-        message: "User not found"
+        message: "vendor not found"
       });
     }
 
@@ -247,9 +241,9 @@ exports.resetPassword = async (req, res) => {
     const saltedRound = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, saltedRound);
 
-    // Update the user's password
-    user.password = hashedPassword;
-    await user.save();
+    // Update the vendor's password
+    vendor.password = hashedPassword;
+    await vendor.save();
 
     res.status(200).json({
       message: "Password reset successful"
@@ -266,7 +260,7 @@ exports.resetPassword = async (req, res) => {
 // User login
 exports.userLogin = async (req, res) => {
   try {
-    // Extract the user's email and password
+    // Extract the vendor's email and password
     const { password, email } = req.body;
     if (!email || !password) {
       return res.status(404).json({
@@ -274,48 +268,50 @@ exports.userLogin = async (req, res) => {
       });
     }
 
-    // Find user by their registered email
-    const user = await userModel.findOne({ email: email.toLowerCase() })
+    // Find vendor by their registered email
+    const vendor = await vendorModel.findOne({ email: email.toLowerCase() })
 
-    // Check if the user exists
-    if (!user) {
+    // Check if the vendor exists
+    if (!vendor) {
       return res.status(404).json({
-        Failed: `User with the email ${email} not found`
+        Failed: `vendor with the email ${email} not found`
       })
     }
 
-    // Compare user's password with the saved password.
-    const checkPassword = bcrypt.compareSync(password, user.password)
+    // Compare vendor's password with the saved password.
+    const checkPassword = bcrypt.compareSync(password, vendor.password)
     // Check for password error
     if (!checkPassword) {
-      return res.status(404).json({
+      return 
+      res.status(404).json({
         Message: 'Login Unsuccessful',
         Failed: 'Invalid password'
       })
     }
 
-    // Check if the user if verified
-    if (!user.isVerified) {
-      return res.status(404).json({
+    // Check if the vendor if verified
+    if (!vendor.isVerified) {
+      return 
+      res.status(404).json({
         message: `Email Not Verified, Please verify your email to log in.`
       })
     }
 
     const token = jwt.sign({
-      userId: user._id,
-      email: user.email,
-      isAdmin: user.isAdmin,
-      isSuperAdmin: user.isSuperAdmin
+      vendorId: vendor._id,
+      email: vendor.email,
+      isAdmin: vendor.isAdmin,
+      isSuperAdmin: vendor.isSuperAdmin
     },
-      process.env.JWT_SECRET, { expiresIn: "5 min" })
+      process.env.JWT_SECRET, { expiresIn: "10 min" })
 
-    user.save()
+    vendor.save()
 
     res.status(200).json({
       message: 'Login successful',
-      fullName: user.fullName,
-      email: user.email,
-      token
+      fullName: vendor.fullName,
+      email: vendor.email,
+      message: token
     })
 
   } catch (error) {
@@ -326,32 +322,33 @@ exports.userLogin = async (req, res) => {
 }
 
 // Change Password
-exports.changePassword = async (req, res) => {
+const changePassword = async (req, res) => {
   try {
     const { token } = req.params;
     const { newPassword, existingPassword } = req.body;
     if (!newPassword || !existingPassword) {
-      return res.status(404).json({
+      return 
+      res.status(404).json({
         error: "Please enter all fields"
       });
     }
 
-    // Verify the user's token
+    // Verify the vendor's token
     const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Get the user's Id from the token
-    const userId = decodedToken.userId;
+    // Get the vendor's Id from the token
+    const vendorId = decodedToken.vendorId;
 
-    // Find the user by ID
-    const user = await userModel.findById(userId);
-    if (!user) {
+    // Find the vendor by ID
+    const vendor = await vendorModel.findById(vendorId);
+    if (!vendor) {
       return res.status(404).json({
-        message: "User not found"
+        message: "vendor not found"
       });
     }
 
     // Confirm the previous password
-    const isPasswordMatch = await bcrypt.compare(existingPassword, user.password);
+    const isPasswordMatch = await bcrypt.compare(existingPassword, vendor.password);
     if (!isPasswordMatch) {
       return res.status(401).json({
         message: "Existing password is incorrect."
@@ -362,9 +359,9 @@ exports.changePassword = async (req, res) => {
     const saltedRound = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(newPassword, saltedRound);
 
-    // Update the user's password
-    user.password = hashedPassword;
-    await user.save();
+    // Update the vendor's password
+    vendor.password = hashedPassword;
+    await vendor.save();
 
     res.status(200).json({
       message: "Password changed successful"
@@ -378,13 +375,14 @@ exports.changePassword = async (req, res) => {
 };
 
 
-// User sign out
+// vendor sign out
 exports.signOut = async (req, res) => {
   try {
     const authorizationHeader = req.headers.authorization;
 
     if (!authorizationHeader) {
-      return res.status(401).json({
+      return 
+      res.status(401).json({
         message: 'Missing token'
       });
     }
@@ -399,7 +397,7 @@ exports.signOut = async (req, res) => {
     await revokedToken.save();
 
     res.status(200).json({
-      message: 'User logged out successfully'
+      message: 'vendor logged out successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -408,52 +406,52 @@ exports.signOut = async (req, res) => {
   }
 };
 
+
 // USER CRUD
 
+
 // Update User
-exports.updateUser = async (req, res) => {
+const updateVendor = async (req, res) => {
   try {
-    const { userId } = req.user;
-    const { fullName, email, phoneNumber } = req.body;
+    const { vendorId } = req.user;
+    const { fullName, email, contact } = req.body;
 
-    const user = await userModel.findById(userId)
+    const vendor = await vendorModel.findById(vendorId)
 
-    if (!user) {
-      return res.status(200).json({
-        message: `User with id: ${userId} not found`,
+    if (!vendor) {
+      return 
+      res.status(200).json({
+        message: `Vendor with Id: ${userId} not found`,
       })
     }
 
     // Construct the data object based on the fields present in the request body
     const data = {};
 
-    if (surName) {
-      data.surName = surName.toUpperCase();
+    if (fullName) {
+      data.fullName = fullName.toUpperCase();
     }
 
-    if (lastName) {
-      data.lastName = lastName.toUpperCase();
-    }
-
-    if (phoneNumber) {
-      data.phoneNumber = phoneNumber;
+    if (contact) {
+      data.contact = contact;
     }
 
     if (email) {
       data.email = email.toLowerCase();
-      const emailExists = await userModel.findOne({ email: email.toLowerCase() })
+      const emailExists = await vendorModel.findOne({ email: email.toLowerCase() })
   
-      if (emailExists && emailExists._id.toString() !== userId) {
-        return res.status(400).json({
+      if (emailExists && emailExists._id.toString() !== vendorId) {
+        return 
+        res.status(400).json({
           message: `Email already exists.`
         })
       }
     }
     
-    const update = await userModel.findByIdAndUpdate(userId, data, { new: true })
+    const update = await vendorModel.findByIdAndUpdate(vendorId, data, { new: true })
 
     res.status(200).json({
-      message: 'User updated successfully',
+      message: 'Vendor updated successfully',
       data: update
     })
 
@@ -467,20 +465,20 @@ exports.updateUser = async (req, res) => {
 
 
 
-// Delete user
-exports.deleteUser = async (req, res) => {
+// Delete vendor
+const deleteVendor = async (req, res) => {
   try {
-    const userId = req.user.userId
-    const user = await userModel.findById(userId);
-    if (!user) {
-      return res.status(200).json({
-        message: `User with id: ${userId} not found`,
+    const vendorId = req.user.vendorId
+    const vendor = await vendorModel.findById(vendorId);
+    if (!vendor) {
+      return 
+      res.status(401).json({
+        message: `vendor with id: ${vendorId} not found`,
       })
     }
-    const deletedUser = await userModel.findByIdAndDelete(userId)
+    const deletedvendor = await vendorModel.findByIdAndDelete(vendorId)
     res.status(200).json({
-      message: 'User deleted successfully',
-      deletedUser
+      message: 'Vendor deleted successfully',
     })
 
   } catch (error) {
@@ -488,20 +486,17 @@ exports.deleteUser = async (req, res) => {
       Error: error.message
     })
   }
-};
+}
 
-exports.search = async (req, res) => {
-  try {
-    const { query } = req.query; // Get search query from request query parameters
-
-    // Search restaurants
-    const restaurants = await Restaurant.find({ name: { $regex: new RegExp(query, 'i') } });
-
-    // Search menu items
-    const menuItems = await MenuItem.find({ name: { $regex: new RegExp(query, 'i') } });
-
-    res.json({ restaurants, menuItems });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+module.exports = {
+  userSignUp,
+  userLogin,
+  signOut,
+  verifyEmail,
+  resendVerificationEmail,
+  forgotPassword,
+  changePassword,
+  resetPassword,
+  updateUser,
+  deleteUser
+}

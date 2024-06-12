@@ -1,13 +1,13 @@
-const userModel = require('../models/userModel');
-const restaurantModel = require('../models/restaurantModel');
-const menuModel = require('../models/menuModel');
-const cartModel = require('../models/cartModel')
-const orderModel = require('../models/orderModel');
+const userModel = require('../MODEL/userModel');
+const restaurantModel = require('../MODEL/restaurantModel');
+const menuModel = require('../MODEL/menuModel');
+const cartModel = require('../MODEL/cartModel')
+const orderModel = require('../MODEL/orderModel');
 const { orderMailTemplate, restaurantOrderMailTemplate } = require('../middleware/mailTemplate');
 const { sendEmail } = require('../middleware/sendMail');
 
 
-// User to place an order
+// To place an order
 const placeOrder = async (req, res) => {
   try {
     const { userId } = req.user;
@@ -16,7 +16,8 @@ const placeOrder = async (req, res) => {
     // Find the user from the database
     const user = await userModel.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return 
+      res.status(404).json({ message: 'User not found' });
     }
 
     if (cashBackToggle === true) {
@@ -26,7 +27,8 @@ const placeOrder = async (req, res) => {
     // Find the user's cart
     const cart = await cartModel.findOne({ user: userId });
     if (!cart || cart.items.length === 0) {
-      return res.status(404).json({ message: 'Cart not found or is empty' });
+      return 
+      res.status(404).json({ message: 'Cart not found or is empty' });
     }
 
     // Extract the restaurant's ID from the cart and find the restaurant
@@ -56,8 +58,11 @@ const placeOrder = async (req, res) => {
     } catch (error) {
       // Handle any errors that occur during the loop
       console.error('An error occurred while processing cart items:', error);
-      res.status(500).json({ message: 'Failed to process cart items' });
-      return; // Stop further processing
+      res.status(500).json({
+         message: 'Failed to process cart items'
+         });
+      return; 
+      // Stop further processing
     }
 
     // Update the cart's total price
@@ -82,11 +87,11 @@ const placeOrder = async (req, res) => {
     // Update the user's cashback by subtracting the cashBackToUse from the user's current cashback
     user.cashBack = user.cashBack - cashBackToUse;
 
-    // Calculate cash back amount for the next order
+    // Calculate cash-back amount for the next order
     let cashBackAmount = 0;
     try {
       if (discountedTotal >= 2000) {
-        cashBackAmount = 60;
+        cashBackAmount = 50;
       }
     } catch (error) {
       console.error('An error occurred while calculating cash back amount:', error);
@@ -121,7 +126,7 @@ const placeOrder = async (req, res) => {
     await user.save();
     await restaurant.save();
 
-    const subject = "Order Confirmation";
+    const subject = "Order Confirmed";
     const html = await orderMailTemplate(user.fullName, userOrder._id, userOrder.orderDate, itemNames, userOrder.total);
     const mail = {
       email: user.email,
@@ -131,7 +136,15 @@ const placeOrder = async (req, res) => {
     sendEmail(mail);
 
     const restSubject = "New Order Placed";
-    const html1 = await restaurantOrderMailTemplate(user.fullName, user.email, customerAddress, userOrder._id, userOrder.orderDate, itemNames, userOrder.total);
+    const html1 = await restaurantOrderMailTemplate(
+      user.fullName,
+      user.email,
+      customerAddress,
+      userOrder._id,
+      userOrder.orderDate,
+      itemNames, 
+      userOrder.total);
+      
     const restMail = {
       email: restaurant.email,
       subject: restSubject,

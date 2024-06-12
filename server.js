@@ -1,10 +1,23 @@
 const express = require('express');
 const mongoose = require('mongoose');
 require("dotenv").config()
-const AsapRouter =require("./ROUTER/router")
+const PointRouter =require("./ROUTER/user")
+const RestuarantRouter = require("./ROUTER/Restuarant")
+const CartRouter = require("./ROUTER/cart")
+const Menu = require("./ROUTER/manu")
+const Category = require("./ROUTER/category")
+const Order = require("./ROUTER/order")
+
 const app  = express()
 app.use(express.json)
-app.use("/api/",AsapRouter)
+
+app.use("/api/",PointRouter);
+app.use("/api/",RestuarantRouter);
+app.use("/api/",CartRouter);
+app.use("/api/",Menu);
+app.use("/api/",Category);
+app.use("/api/",Order)
+
 
 const DB = process.env.DATABASE
 mongoose.connect(DB).then(()=>{
